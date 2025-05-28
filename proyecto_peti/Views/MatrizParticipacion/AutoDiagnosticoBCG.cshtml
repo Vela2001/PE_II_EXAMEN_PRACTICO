@@ -292,23 +292,12 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // ========== FUNCIONES ORIGINALES ==========
+            // --- Variables comunes ---
+            const colores = ['#FF5733', '#33FF57', '#337DFF', '#F3FF33', '#FF33F3'];
 
-            // 1. Cálculo de % de Ventas
-            $('.venta').on('input', function () {
-                updateVentas();
-            });
+            // --- FUNCIONES ---
 
-            // 2. Cálculo de TCM Promedio
-            $('.tcm').on('input', function () {
-                updateTCM();
-            });
-
-            // 3. Actualizar PRM y Gráfico
-            $('.prm').on('input', function () {
-                updateBCGChart();
-            });
-
+            // 1. Actualizar % de ventas
             function updateVentas() {
                 let total = 0;
                 $('.venta').each(function () {
@@ -318,28 +307,37 @@
 
                 $('.venta').each(function () {
                     const valor = parseFloat($(this).val()) || 0;
-                    const porcentaje = (total > 0 ? (valor / total * 100) : 0).toFixed(2) + '%';
-                    $(this).closest('tr').find('.porcentaje').text(porcentaje);
-                    $('.porcentaje-ventas').eq($(this).data('producto') - 1).text(porcentaje);
+                    const porcentaje = total > 0 ? (valor / total * 100) : 0;
+                    const porcentajeStr = porcentaje.toFixed(2) + '%';
+
+                    $(this).closest('tr').find('.porcentaje').text(porcentajeStr);
+                    $('.porcentaje-ventas').eq($(this).data('producto') - 1).text(porcentaje.toFixed(2));
                 });
             }
 
+            // 2. Actualizar TCM promedio
             function updateTCM() {
                 $('.tcm-promedio').each(function (i) {
                     const producto = i + 1;
                     let sum = 0, count = 0;
+
                     $(`.tcm[data-producto="${producto}"]`).each(function () {
-                        sum += parseFloat($(this).val()) || 0;
-                        count++;
+                        const val = parseFloat($(this).val());
+                        if (!isNaN(val)) {
+                            sum += val;
+                            count++;
+                        }
                     });
-                    const promedio = (count > 0 ? (sum / count) : 0).toFixed(2) + '%';
-                    $(this).text(promedio);
+
+                    const promedio = count > 0 ? (sum / count) : 0;
+                    $(this).text(promedio.toFixed(2)); // Solo valor numérico sin '%'
                 });
-                updateBCGChart();
             }
 
+            // 3. Actualizar gráfico BCG
             function updateBCGChart() {
                 const seriesData = [];
+
                 for (let i = 1; i <= 5; i++) {
                     const tcm = parseFloat($('.tcm-promedio').eq(i - 1).text()) || 0;
                     const prm = parseFloat($('.prm').eq(i - 1).val()) || 0;
@@ -348,50 +346,81 @@
                     seriesData.push({
                         x: prm,
                         y: tcm,
-                        z: ventas * 2, // Ajuste para visualización
+                        z: ventas * 2,  // Factor para tamaño burbuja
                         name: `Producto ${i}`,
-                        color: ['#FF5733', '#33FF57', '#337DFF', '#F3FF33', '#FF33F3'][i - 1]
+                        color: colores[i - 1]
                     });
                 }
 
                 Highcharts.chart('bcgChart', {
-                    chart: { type: 'bubble', plotBorderWidth: 1 },
+                    chart: {
+                        type: 'bubble',
+                        plotBorderWidth: 1,
+                        zoomType: 'xy'
+                    },
                     title: { text: 'MATRIZ BCG' },
                     xAxis: {
-                        title: { text: 'PRM' },
-                        min: 0, max: 2
+                        title: { text: 'Participación Relativa de Mercado (PRM)' },
+                        min: 0,
+                        max: 2,
+                        plotLines: [{
+                            color: '#999',
+                            width: 1,
+                            value: 1,
+                            dashStyle: 'Dash',
+                            label: { text: 'Línea Media PRM' }
+                        }]
                     },
                     yAxis: {
-                        title: { text: 'TCM (%)' },
-                        min: -10, max: 20
+                        title: { text: 'Tasa de Crecimiento del Mercado (TCM) %' },
+                        min: -10,
+                        max: 20,
+                        plotLines: [{
+                            color: '#999',
+                            width: 1,
+                            value: 10,
+                            dashStyle: 'Dash',
+                            label: { text: 'Línea Media TCM' }
+                        }]
                     },
-                    series: [{ data: seriesData }],
+                    series: [{
+                        data: seriesData,
+                        dataLabels: {
+                            enabled: true,
+                            format: '{point.name}',
+                            style: { fontWeight: 'bold' }
+                        }
+                    }],
                     tooltip: {
                         formatter: function () {
                             return `<b>${this.point.name}</b><br>
-                                            PRM: ${this.point.x}<br>
-                                            TCM: ${this.point.y}%<br>
-                                            Participación: ${this.point.z / 2}%`;
+                                        PRM: ${this.point.x}<br>
+                                        TCM: ${this.point.y}%<br>
+                                        Participación: ${(this.point.z / 2).toFixed(2)}%`;
+                        }
+                    },
+                    plotOptions: {
+                        bubble: {
+                            minSize: 20,
+                            maxSize: 60
                         }
                     }
                 });
             }
 
-            // Calcular automáticamente el mayor competidor por producto
-            $('.venta-competidor').on('input', function () {
-                const producto = $(this).data('producto');
-                let maxVenta = 0;
+            // 4. Calcular mayor competidor por producto
+            function updateMayorCompetidor() {
+                for (let producto = 1; producto <= 5; producto++) {
+                    let maxVenta = 0;
+                    $(`.venta-competidor[data-producto="${producto}"]`).each(function () {
+                        const venta = parseFloat($(this).val()) || 0;
+                        if (venta > maxVenta) maxVenta = venta;
+                    });
+                    $(`.mayor-venta[data-producto="${producto}"]`).text(maxVenta.toFixed(2));
+                }
+            }
 
-                $(`.venta-competidor[data-producto="${producto}"]`).each(function () {
-                    const venta = parseFloat($(this).val()) || 0;
-                    if (venta > maxVenta) maxVenta = venta;
-                });
-
-                $(`.mayor-venta[data-producto="${producto}"]`).text(maxVenta.toFixed(2));
-            });
-
-            // ========== 🆕 MEJORA 1: ANÁLISIS AUTOMÁTICO BCG ==========
-
+            // 5. Análisis automático BCG
             function analizarBCG() {
                 const resultados = [];
 
@@ -438,87 +467,70 @@
                 return resultados;
             }
 
+            // 6. Mostrar análisis en HTML
             function mostrarAnalisis() {
                 const analisis = analizarBCG();
                 let html = '<div class="row">';
 
                 analisis.forEach(item => {
                     html += `
-                        <div class="col-md-6 mb-3">
-                            <div class="alert alert-${item.color} border-${item.color}">
-                                <h6 class="alert-heading mb-2">
-                                    ${item.icono} Producto ${item.producto}: ${item.categoria}
-                                </h6>
-                                <small class="text-muted d-block mb-2">
-                                    TCM: ${item.tcm}% | PRM: ${item.prm}
-                                </small>
-                                <p class="mb-0"><strong>Estrategia:</strong> ${item.estrategia}</p>
-                            </div>
-                        </div>`;
+                            <div class="col-md-6 mb-3">
+                                <div class="alert alert-${item.color} border-${item.color}">
+                                    <h6 class="alert-heading mb-2">
+                                        ${item.icono} Producto ${item.producto}: ${item.categoria}
+                                    </h6>
+                                    <small class="text-muted d-block mb-2">
+                                        TCM: ${item.tcm}% | PRM: ${item.prm}
+                                    </small>
+                                    <p class="mb-0"><strong>Estrategia:</strong> ${item.estrategia}</p>
+                                </div>
+                            </div>`;
                 });
 
                 html += '</div>';
                 $('#analisisAutomatico').html(html);
             }
 
-            // ========== 🆕 MEJORA 2: VALIDACIÓN Y GUARDADO INTELIGENTE ==========
-
+            // 7. Validación de formulario
             function validarFormulario() {
                 const errores = [];
 
-                // Validar ventas
                 let ventasVacias = 0;
                 $('.venta').each(function () {
-                    if (!$(this).val() || parseFloat($(this).val()) <= 0) {
-                        ventasVacias++;
-                    }
+                    if (!$(this).val() || parseFloat($(this).val()) <= 0) ventasVacias++;
                 });
 
-                if (ventasVacias > 0) {
-                    errores.push(`${ventasVacias} productos sin ventas registradas`);
-                }
+                if (ventasVacias > 0) errores.push(`${ventasVacias} productos sin ventas registradas`);
 
-                // Validar PRM
                 let prmVacios = 0;
                 $('.prm').each(function () {
-                    if (!$(this).val() || parseFloat($(this).val()) <= 0) {
-                        prmVacios++;
-                    }
+                    if (!$(this).val() || parseFloat($(this).val()) <= 0) prmVacios++;
                 });
 
-                if (prmVacios > 0) {
-                    errores.push(`${prmVacios} productos sin PRM definido`);
-                }
+                if (prmVacios > 0) errores.push(`${prmVacios} productos sin PRM definido`);
 
-                // Validar TCM
                 let tcmVacios = 0;
                 $('.tcm').each(function () {
-                    if (!$(this).val()) {
-                        tcmVacios++;
-                    }
+                    if (!$(this).val()) tcmVacios++;
                 });
 
-                if (tcmVacios > $('.tcm').length / 2) {
-                    errores.push('Faltan muchos datos de TCM para análisis confiable');
-                }
+                if (tcmVacios > $('.tcm').length / 2) errores.push('Faltan muchos datos de TCM para análisis confiable');
 
                 return errores;
             }
 
+            // 8. Guardar con validación y simulación
             function guardarConValidacion() {
                 const errores = validarFormulario();
                 const btn = $('#btnGuardar');
 
                 if (errores.length > 0) {
-                    // Usar alert si no tienes toastr
                     alert('Errores de Validación:\n• ' + errores.join('\n• '));
                     return false;
                 }
 
-                // Proceso de guardado
                 btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>GUARDANDO...');
 
-                // Recopilar datos para guardar
                 const datosParaGuardar = {
                     ventas: $('.venta').map(function () { return $(this).val(); }).get(),
                     tcm: $('.tcm').map(function () { return $(this).val(); }).get(),
@@ -528,7 +540,6 @@
                     fecha: new Date().toISOString()
                 };
 
-                // Simulación de guardado (reemplazar con llamada AJAX real)
                 setTimeout(() => {
                     btn.prop('disabled', false).html('<i class="fas fa-save me-2"></i>GUARDAR');
                     alert('Matriz BCG guardada correctamente');
@@ -538,87 +549,32 @@
                 return true;
             }
 
-            // ========== INTEGRACIÓN CON FUNCIONES EXISTENTES ==========
+            // --- EVENTOS ---
 
-            // Actualizar análisis cuando cambien los datos
+            // Actualizar todo al modificar ventas, tcm o prm
             $('.venta, .tcm, .prm').on('input', function () {
-                setTimeout(mostrarAnalisis, 300);
+                updateVentas();
+                updateTCM();
+                updateMayorCompetidor();
+                updateBCGChart();
+                mostrarAnalisis();
             });
 
-            // 🆕 REEMPLAZAR función de guardado original
+            // También actualizar mayor competidor al cambiar esos inputs
+            $('.venta-competidor').on('input', function () {
+                updateMayorCompetidor();
+            });
+
+            // Botón guardar con validación
             $('#btnGuardar').off('click').on('click', guardarConValidacion);
 
-            // Mostrar análisis inicial
+            // --- INICIALIZACIÓN ---
+
+            updateVentas();
+            updateTCM();
+            updateMayorCompetidor();
+            updateBCGChart();
             mostrarAnalisis();
-
-            // Configuración del Gráfico BCG (Burbujas) - ORIGINAL
-            function renderBCGChart() {
-                Highcharts.chart('bcgChart', {
-                    chart: {
-                        type: 'bubble',
-                        plotBorderWidth: 1,
-                        zoomType: 'xy'
-                    },
-                    title: { text: null },
-                    legend: { enabled: false },
-                    xAxis: {
-                        title: { text: 'Participación Relativa de Mercado (PRM)' },
-                        gridLineWidth: 1,
-                        min: 0,
-                        max: 2,
-                        plotLines: [{
-                            color: '#999',
-                            width: 1,
-                            value: 1,
-                            dashStyle: 'Dash',
-                            label: { text: 'Línea Media PRM' }
-                        }]
-                    },
-                    yAxis: {
-                        title: { text: 'Tasa de Crecimiento del Mercado (TCM)' },
-                        min: -10,
-                        max: 20,
-                        plotLines: [{
-                            color: '#999',
-                            width: 1,
-                            value: 10,
-                            dashStyle: 'Dash',
-                            label: { text: 'Línea Media TCM' }
-                        }]
-                    },
-                    series: [{
-                        data: [
-                            { x: 1.8, y: 15, z: 30, name: 'Producto 1', color: '#FF5733' },  // Estrella
-                            { x: 0.3, y: 18, z: 20, name: 'Producto 2', color: '#33FF57' },  // Interrogante
-                            { x: 1.5, y: 5, z: 35, name: 'Producto 3', color: '#337DFF' },   // Vaca
-                            { x: 0.5, y: -2, z: 15, name: 'Producto 4', color: '#F3FF33' },  // Perro
-                            { x: 1.2, y: 12, z: 25, name: 'Producto 5', color: '#FF33F3' }   // Estrella/Interrogante
-                        ],
-                        dataLabels: {
-                            enabled: true,
-                            format: '{point.name}',
-                            style: { fontWeight: 'bold' }
-                        }
-                    }],
-                    tooltip: {
-                        formatter: function () {
-                            return `<b>${this.point.name}</b><br>
-                            PRM: ${this.point.x}<br>
-                            TCM: ${this.point.y}%<br>
-                            Participación: ${this.point.z}%`;
-                        }
-                    },
-                    plotOptions: {
-                        bubble: {
-                            minSize: 20,
-                            maxSize: 60
-                        }
-                    }
-                });
-            }
-
-            // Inicializar gráfico al cargar - ORIGINAL
-            renderBCGChart();
         });
     </script>
 }
