@@ -41,6 +41,7 @@
         </div>
     </div>
 
+
     <!-- Sección 2: TCM -->
     <div class="card card-soft mb-4">
         <div class="card-header card-header-soft bg-success text-white">
@@ -147,6 +148,7 @@
             </table>
         </div>
     </div>
+
     <!-- Sección 5: Competidores -->
     <div class="card card-soft mt-4">
         <div class="card-header card-header-soft bg-dark text-white">
@@ -200,6 +202,18 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🆕 NUEVA SECCIÓN: Análisis Automático BCG -->
+    <div class="card card-soft mt-4">
+        <div class="card-header card-header-soft bg-info text-white">
+            <i class="fas fa-robot me-2"></i>ANÁLISIS AUTOMÁTICO BCG
+        </div>
+        <div class="card-body">
+            <div id="analisisAutomatico">
+                <p class="text-center text-muted">Complete los datos para ver el análisis automático</p>
             </div>
         </div>
     </div>
@@ -278,6 +292,8 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
+            // ========== FUNCIONES ORIGINALES ==========
+
             // 1. Cálculo de % de Ventas
             $('.venta').on('input', function () {
                 updateVentas();
@@ -353,13 +369,14 @@
                     tooltip: {
                         formatter: function () {
                             return `<b>${this.point.name}</b><br>
-                                        PRM: ${this.point.x}<br>
-                                        TCM: ${this.point.y}%<br>
-                                        Participación: ${this.point.z / 2}%`;
+                                            PRM: ${this.point.x}<br>
+                                            TCM: ${this.point.y}%<br>
+                                            Participación: ${this.point.z / 2}%`;
                         }
                     }
                 });
             }
+
             // Calcular automáticamente el mayor competidor por producto
             $('.venta-competidor').on('input', function () {
                 const producto = $(this).data('producto');
@@ -372,7 +389,169 @@
 
                 $(`.mayor-venta[data-producto="${producto}"]`).text(maxVenta.toFixed(2));
             });
-            // Configuración del Gráfico BCG (Burbujas)
+
+            // ========== 🆕 MEJORA 1: ANÁLISIS AUTOMÁTICO BCG ==========
+
+            function analizarBCG() {
+                const resultados = [];
+
+                for (let i = 1; i <= 5; i++) {
+                    const tcm = parseFloat($('.tcm-promedio').eq(i - 1).text()) || 0;
+                    const prm = parseFloat($('.prm').eq(i - 1).val()) || 0;
+                    const participacion = parseFloat($('.porcentaje-ventas').eq(i - 1).text()) || 0;
+
+                    let categoria, estrategia, color, icono;
+
+                    if (tcm >= 10 && prm >= 1) {
+                        categoria = 'ESTRELLA';
+                        estrategia = 'Invertir para mantener liderazgo de mercado';
+                        color = 'success';
+                        icono = '⭐';
+                    } else if (tcm >= 10 && prm < 1) {
+                        categoria = 'INTERROGANTE';
+                        estrategia = 'Evaluar potencial - Invertir selectivamente o desinvertir';
+                        color = 'warning';
+                        icono = '❓';
+                    } else if (tcm < 10 && prm >= 1) {
+                        categoria = 'VACA LECHERA';
+                        estrategia = 'Optimizar para generar flujo de caja';
+                        color = 'primary';
+                        icono = '🐄';
+                    } else {
+                        categoria = 'PERRO';
+                        estrategia = 'Considerar eliminación o enfoque en nicho específico';
+                        color = 'danger';
+                        icono = '🐕';
+                    }
+
+                    resultados.push({
+                        producto: i,
+                        categoria,
+                        estrategia,
+                        color,
+                        icono,
+                        tcm: tcm.toFixed(1),
+                        prm: prm.toFixed(2)
+                    });
+                }
+
+                return resultados;
+            }
+
+            function mostrarAnalisis() {
+                const analisis = analizarBCG();
+                let html = '<div class="row">';
+
+                analisis.forEach(item => {
+                    html += `
+                        <div class="col-md-6 mb-3">
+                            <div class="alert alert-${item.color} border-${item.color}">
+                                <h6 class="alert-heading mb-2">
+                                    ${item.icono} Producto ${item.producto}: ${item.categoria}
+                                </h6>
+                                <small class="text-muted d-block mb-2">
+                                    TCM: ${item.tcm}% | PRM: ${item.prm}
+                                </small>
+                                <p class="mb-0"><strong>Estrategia:</strong> ${item.estrategia}</p>
+                            </div>
+                        </div>`;
+                });
+
+                html += '</div>';
+                $('#analisisAutomatico').html(html);
+            }
+
+            // ========== 🆕 MEJORA 2: VALIDACIÓN Y GUARDADO INTELIGENTE ==========
+
+            function validarFormulario() {
+                const errores = [];
+
+                // Validar ventas
+                let ventasVacias = 0;
+                $('.venta').each(function () {
+                    if (!$(this).val() || parseFloat($(this).val()) <= 0) {
+                        ventasVacias++;
+                    }
+                });
+
+                if (ventasVacias > 0) {
+                    errores.push(`${ventasVacias} productos sin ventas registradas`);
+                }
+
+                // Validar PRM
+                let prmVacios = 0;
+                $('.prm').each(function () {
+                    if (!$(this).val() || parseFloat($(this).val()) <= 0) {
+                        prmVacios++;
+                    }
+                });
+
+                if (prmVacios > 0) {
+                    errores.push(`${prmVacios} productos sin PRM definido`);
+                }
+
+                // Validar TCM
+                let tcmVacios = 0;
+                $('.tcm').each(function () {
+                    if (!$(this).val()) {
+                        tcmVacios++;
+                    }
+                });
+
+                if (tcmVacios > $('.tcm').length / 2) {
+                    errores.push('Faltan muchos datos de TCM para análisis confiable');
+                }
+
+                return errores;
+            }
+
+            function guardarConValidacion() {
+                const errores = validarFormulario();
+                const btn = $('#btnGuardar');
+
+                if (errores.length > 0) {
+                    // Usar alert si no tienes toastr
+                    alert('Errores de Validación:\n• ' + errores.join('\n• '));
+                    return false;
+                }
+
+                // Proceso de guardado
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>GUARDANDO...');
+
+                // Recopilar datos para guardar
+                const datosParaGuardar = {
+                    ventas: $('.venta').map(function () { return $(this).val(); }).get(),
+                    tcm: $('.tcm').map(function () { return $(this).val(); }).get(),
+                    prm: $('.prm').map(function () { return $(this).val(); }).get(),
+                    fortalezas: $('textarea[placeholder*="fortaleza"]').map(function () { return $(this).val(); }).get(),
+                    debilidades: $('textarea[placeholder*="debilidad"]').map(function () { return $(this).val(); }).get(),
+                    fecha: new Date().toISOString()
+                };
+
+                // Simulación de guardado (reemplazar con llamada AJAX real)
+                setTimeout(() => {
+                    btn.prop('disabled', false).html('<i class="fas fa-save me-2"></i>GUARDAR');
+                    alert('Matriz BCG guardada correctamente');
+                    console.log('Datos guardados:', datosParaGuardar);
+                }, 1500);
+
+                return true;
+            }
+
+            // ========== INTEGRACIÓN CON FUNCIONES EXISTENTES ==========
+
+            // Actualizar análisis cuando cambien los datos
+            $('.venta, .tcm, .prm').on('input', function () {
+                setTimeout(mostrarAnalisis, 300);
+            });
+
+            // 🆕 REEMPLAZAR función de guardado original
+            $('#btnGuardar').off('click').on('click', guardarConValidacion);
+
+            // Mostrar análisis inicial
+            mostrarAnalisis();
+
+            // Configuración del Gráfico BCG (Burbujas) - ORIGINAL
             function renderBCGChart() {
                 Highcharts.chart('bcgChart', {
                     chart: {
@@ -424,9 +603,9 @@
                     tooltip: {
                         formatter: function () {
                             return `<b>${this.point.name}</b><br>
-                        PRM: ${this.point.x}<br>
-                        TCM: ${this.point.y}%<br>
-                        Participación: ${this.point.z}%`;
+                            PRM: ${this.point.x}<br>
+                            TCM: ${this.point.y}%<br>
+                            Participación: ${this.point.z}%`;
                         }
                     },
                     plotOptions: {
@@ -438,21 +617,8 @@
                 });
             }
 
-            // Inicializar gráfico al cargar
-            $(document).ready(function () {
-                renderBCGChart();
-            });
-            // Manejo del botón Guardar
-            $('#btnGuardar').click(function () {
-                const btn = $(this);
-                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>GUARDANDO...');
-
-                // Simulación de guardado (reemplazar con AJAX real)
-                setTimeout(() => {
-                    btn.prop('disabled', false).html('<i class="fas fa-save me-2"></i>GUARDAR');
-                    toastr.success('Datos guardados correctamente');
-                }, 1500);
-            });
+            // Inicializar gráfico al cargar - ORIGINAL
+            renderBCGChart();
         });
     </script>
 }
