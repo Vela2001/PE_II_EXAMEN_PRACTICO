@@ -10,7 +10,8 @@
 
 ### 1. Análisis Automático BCG
 
-![Captura BCG](mejora_1.png)  
+![Captura BCG](mejora_1.png)
+![Captura BCG](mejora_3.png)
 
 **Descripción:**  
 Se desarrolló un módulo de clasificación automática de productos basado en la Matriz BCG que categoriza cada producto en una de las cuatro cuadrantes: Estrella, Vaca, Interrogante y Perro. Esto permite una visualización clara y rápida del posicionamiento estratégico de cada producto.
@@ -24,8 +25,9 @@ Se desarrolló un módulo de clasificación automática de productos basado en l
 
 ### 2. Validación y Guardado Inteligente
 
-![Captura Save](mejora_2.png)  
-
+![Captura Save](mejora_2.png)
+![Captura Save](mejora_4.png)   
+ 
 **Descripción:**  
 Se implementó un sistema robusto de validación que verifica automáticamente la integridad y completitud de los datos antes de ser guardados.
 
